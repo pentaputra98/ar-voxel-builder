@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>V-Blox AR — HoloForge Edition · VECTOR</title>
+  <meta name="theme-color" content="#0A1B3D" />
+  <link rel="stylesheet" href="styles/main.css" />
+
+  <!--
+    Dependencies are pulled from CDN by default so the game runs the moment you
+    serve this folder. For the OFFLINE BOOTH BUILD, download three.module.js and
+    the MediaPipe tasks-vision package + model into ./vendor and repoint these
+    URLs (and CONFIG.mediapipe in src/config.js). See README.md.
+  -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+      "tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs"
+    }
+  }
+  </script>
+</head>
+<body>
+  <!-- The real-world webcam feed. Full-bleed, mirrored, object-fit: cover. -->
+  <video id="webcam" playsinline autoplay muted></video>
+
+  <!-- The holographic 3D scene renders transparently on top of the feed. -->
+  <canvas id="scene"></canvas>
+
+  <!-- Scanline / vignette / flash overlays live here (pure CSS + JS opacity). -->
+  <div id="fx-overlay" aria-hidden="true">
+    <div id="fx-flash"></div>
+    <div id="fx-vignette"></div>
+    <div id="fx-scanlines"></div>
+  </div>
+
+  <!-- All HUD chrome (corners only — center stays clear as the AR stage). -->
+  <div id="hud">
+    <!-- Top-left: brand + level -->
+    <div class="panel panel-brand" id="panel-brand">
+      <div class="logo">V&#8288;-&#8288;BLOX<span class="logo-sub">AR · HOLOFORGE</span></div>
+      <div class="level-tag" id="level-tag">LEVEL 1 · LINE</div>
+    </div>
+
+    <!-- Top-right: timer + accuracy -->
+    <div class="panel panel-status" id="panel-status">
+      <div class="timer" id="timer">60.0</div>
+      <div class="accuracy-wrap">
+        <div class="accuracy-bar"><div class="accuracy-fill" id="accuracy-fill"></div></div>
+        <div class="accuracy-label" id="accuracy-label">0%</div>
+      </div>
+    </div>
+
+    <!-- Left: always-on gesture cheat sheet -->
+    <div class="panel cheat-sheet" id="cheat-sheet">
+      <div class="cheat-title">HOW TO PLAY</div>
+      <div class="cheat-row"><span class="cheat-ico">☝️</span><div class="cheat-txt"><b>POINT &amp; HOLD</b><span>Place block</span></div></div>
+      <div class="cheat-row"><span class="cheat-ico">✊</span><div class="cheat-txt"><b>FIST</b><span>Delete block</span></div></div>
+      <div class="cheat-row"><span class="cheat-ico">🖐️⬅️</span><div class="cheat-txt"><b>SWIPE LEFT</b><span>Undo</span></div></div>
+      <div class="cheat-row cheat-layer" id="cheat-layer-row"><span class="cheat-ico">✋⬆️</span><div class="cheat-txt"><b>RAISE HAND</b><span>Higher layer</span></div></div>
+    </div>
+
+    <!-- Bottom-left: gesture hints / coach marks -->
+    <div class="panel panel-coach" id="panel-coach">
+      <span class="coach-icon" id="coach-icon">✊</span>
+      <span class="coach-text" id="coach-text">Point &amp; pinch to build</span>
+    </div>
+
+    <!-- Floating label attached to the reticle (DELETE MODE / NO SPACE) -->
+    <div id="reticle-label"></div>
+
+    <!-- Radial dwell-to-place progress ring, drawn around the reticle -->
+    <div id="dwell-ring">
+      <svg viewBox="0 0 64 64">
+        <circle class="dr-track" cx="32" cy="32" r="27"></circle>
+        <circle class="dr-prog"  cx="32" cy="32" r="27"></circle>
+      </svg>
+    </div>
+
+    <!-- Bottom-right: VEX the pixel-robot mascot -->
+    <div class="vex" id="vex" data-mood="idle" aria-label="VEX mascot">
+      <canvas id="vex-canvas" width="64" height="64"></canvas>
+      <div class="vex-bubble" id="vex-bubble"></div>
+    </div>
+
+    <!-- Center message banner (LEVEL CLEARED, GET READY, etc). -->
+    <div class="banner" id="banner"></div>
+
+    <!-- Input-mode + FPS diagnostics (toggle with 'D'). -->
+    <div class="diag" id="diag" hidden></div>
+  </div>
+
+  <!-- Full-screen overlays: start / calibrate / results / leaderboard. -->
+  <div id="overlays"></div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
