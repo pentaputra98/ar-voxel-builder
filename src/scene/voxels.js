@@ -28,10 +28,11 @@ export class VoxelField {
 
     const geo = new THREE.BoxGeometry(this.cell * 0.94, this.cell * 0.94, this.cell * 0.94);
 
-    // --- placed voxels ---
+    // --- placed voxels --- (solid & bright, so a filled cell clearly reads as
+    // DONE vs the translucent glowing ghost still waiting to be filled)
     const mat = new THREE.MeshStandardMaterial({
-      color: 0xffffff, emissiveIntensity: 0.45, transparent: true, opacity: 0.9,
-      roughness: 0.32, metalness: 0.12,
+      color: 0xffffff, emissiveIntensity: 0.65, transparent: true, opacity: 0.97,
+      roughness: 0.3, metalness: 0.12,
     });
     mat.emissive = new THREE.Color(C.color.orange);
     this.mesh = new THREE.InstancedMesh(geo, mat, this.capacity);
@@ -40,15 +41,28 @@ export class VoxelField {
     this.mesh.frustumCulled = false;
     scene.add(this.mesh);
 
-    // --- ghost target voxels ---
+    // --- ghost target voxels (the "build this!" blueprint) ---
+    // Bright glowing WHITE so it pops off the blue grid and the orange placed
+    // blocks — this is the main quest, it must be the most eye-catching thing
+    // on the table. Pulsed each frame in update().
     const ghostMat = new THREE.MeshStandardMaterial({
-      color: C.color.blue, emissive: C.color.blue, emissiveIntensity: 0.5,
-      transparent: true, opacity: 0.22, depthWrite: false, roughness: 0.5,
+      color: C.color.white, emissive: C.color.white, emissiveIntensity: 1.0,
+      transparent: true, opacity: 0.5, depthWrite: false, roughness: 0.35,
     });
     this.ghost = new THREE.InstancedMesh(geo, ghostMat, this.capacity);
     this.ghost.count = this.capacity;
     this.ghost.frustumCulled = false;
     scene.add(this.ghost);
+
+    // glowing wireframe cages around each target cell, so the outline of what
+    // to build is unmistakable even at a glance from across the booth.
+    // (wireframe MeshBasicMaterial is InstancedMesh-safe — unlike line geometry)
+    const cageMat = new THREE.MeshBasicMaterial({
+      color: C.color.white, wireframe: true, transparent: true, opacity: 0.85, depthWrite: false });
+    this.cage = new THREE.InstancedMesh(geo, cageMat, this.capacity);
+    this.cage.count = this.capacity;
+    this.cage.frustumCulled = false;
+    scene.add(this.cage);
 
     // active placed cells (contiguous) + lookup
     this.cells = [];                 // [{x,y,z}]
@@ -84,7 +98,7 @@ export class VoxelField {
     const g = this.N * this.cell;
     const geo = new THREE.PlaneGeometry(g, g);
     const mat = new THREE.MeshBasicMaterial({
-      color: CONFIG.color.blue, transparent: true, opacity: 0.10,
+      color: CONFIG.color.orange, transparent: true, opacity: 0.12,
       side: THREE.DoubleSide, depthWrite: false });
     this.layerPlane = new THREE.Mesh(geo, mat);
     this.layerPlane.rotation.x = -Math.PI / 2;
@@ -96,7 +110,7 @@ export class VoxelField {
       new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(-half, 0, -half), new THREE.Vector3(half, 0, -half),
         new THREE.Vector3(half, 0, half), new THREE.Vector3(-half, 0, half)]),
-      new THREE.LineBasicMaterial({ color: CONFIG.color.blue, transparent: true, opacity: 0.7 }));
+      new THREE.LineBasicMaterial({ color: CONFIG.color.orange, transparent: true, opacity: 0.85 }));
     this.layerBorder.visible = false;
     scene.add(this.layerBorder);
   }
@@ -200,6 +214,13 @@ export class VoxelField {
       }
     }
     if (dirty) this.mesh.instanceMatrix.needsUpdate = true;
+
+    // pulse the target ghost + cage so the "build this" blueprint breathes and
+    // draws the eye — the single most important thing on the table
+    const pulse = 0.5 + 0.5 * Math.sin(tSec * 3.2);
+    this.ghost.material.opacity = 0.4 + pulse * 0.28;            // 0.40 .. 0.68
+    this.ghost.material.emissiveIntensity = 0.8 + pulse * 0.8;   // 0.8 .. 1.6
+    this.cage.material.opacity = 0.55 + pulse * 0.4;             // 0.55 .. 0.95
 
     // slide the active-layer plane toward its target height (satisfying shift)
     const targetY = this.activeLayer * this.cell + 0.02;
@@ -307,22 +328,27 @@ export class VoxelField {
   }
   _parkAllGhost() {
     this._m.makeTranslation(0, -9999, 0);
-    for (let i = 0; i < this.capacity; i++) this.ghost.setMatrixAt(i, this._m);
+    for (let i = 0; i < this.capacity; i++) { this.ghost.setMatrixAt(i, this._m); this.cage.setMatrixAt(i, this._m); }
     this.ghost.instanceMatrix.needsUpdate = true;
+    this.cage.instanceMatrix.needsUpdate = true;
   }
-  // ghost shows only the still-missing target cells
+  // ghost + wireframe cage show only the still-missing target cells
   _refreshGhost() {
     let n = 0;
     for (const c of this.target) {
       if (this.index.has(key(c))) continue;      // already placed => hide ghost
       this.worldCenter(c, this._p);
-      this._q.identity(); this._s.setScalar(0.9);
-      this._m.compose(this._p, this._q, this._s);
-      this.ghost.setMatrixAt(n++, this._m);
+      this._q.identity();
+      this._s.setScalar(0.9); this._m.compose(this._p, this._q, this._s);
+      this.ghost.setMatrixAt(n, this._m);
+      this._s.setScalar(1.0); this._m.compose(this._p, this._q, this._s);  // cage slightly larger
+      this.cage.setMatrixAt(n, this._m);
+      n++;
     }
     this._m.makeTranslation(0, -9999, 0);
-    for (let i = n; i < this.capacity; i++) this.ghost.setMatrixAt(i, this._m);
+    for (let i = n; i < this.capacity; i++) { this.ghost.setMatrixAt(i, this._m); this.cage.setMatrixAt(i, this._m); }
     this.ghost.instanceMatrix.needsUpdate = true;
+    this.cage.instanceMatrix.needsUpdate = true;
   }
 
   clearAll() { this.reset(); this.target = []; this.targetSet.clear(); this._parkAllGhost(); }

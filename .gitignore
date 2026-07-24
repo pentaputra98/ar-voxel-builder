@@ -1,0 +1,31 @@
+# ===== V-Blox AR (HoloForge) — .gitignore =====
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+
+# Logs / temp
+*.log
+tmp/
+scratchpad/
+
+# Node (only if you later add a build step)
+node_modules/
+dist/
+
+# Optional local offline vendor bundle (large binaries — see README)
+vendor/
+
+# ---- skills/ is the local Claude skill library, NOT part of the game ----
+# Ignore everything under skills/ ...
+skills/*
+# ... except the 5 design docs we wrote for THIS project:
+!skills/game-juice-fx/
+!skills/mediapipe-hand-tracking/
+!skills/spatial-computing-ux/
+!skills/webgl-optimization/
+!skills/vector-brand-exhibition/

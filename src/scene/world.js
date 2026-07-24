@@ -55,7 +55,7 @@ export class World {
     // Grid lines on the floor (light-blue)
     const grid = new THREE.GridHelper(gsize, C.grid.size, C.color.blue, C.color.blue);
     grid.material.transparent = true;
-    grid.material.opacity = 0.35;
+    grid.material.opacity = 0.22;   // dimmed so the glowing target ghost pops
     g.add(grid);
 
     // Glowing base slab
